@@ -43,7 +43,8 @@ import com.google.accompanist.permissions.rememberPermissionState
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun DashboardScreen(
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    onCollectionClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
@@ -81,6 +82,7 @@ fun DashboardScreen(
         if (permissionState.allPermissionsGranted) {
             DashboardContent(
                 uiState = uiState,
+                onCollectionClick = onCollectionClick,
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
@@ -90,7 +92,15 @@ fun DashboardScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Storage permissions are required to scan media.")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Storage permissions are required to scan media.")
+                    androidx.compose.material3.Button(
+                        onClick = { permissionState.launchMultiplePermissionRequest() },
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) {
+                        Text("Grant Permission")
+                    }
+                }
             }
         }
     }
@@ -99,6 +109,7 @@ fun DashboardScreen(
 @Composable
 fun DashboardContent(
     uiState: HomeUiState,
+    onCollectionClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -134,16 +145,24 @@ fun DashboardContent(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(uiState.collections) { collection ->
-                    MediaCollectionCard(collection)
+                    MediaCollectionCard(
+                        collection = collection,
+                        onClick = { onCollectionClick(collection.id) }
+                    )
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MediaCollectionCard(collection: MediaCollection) {
+fun MediaCollectionCard(
+    collection: MediaCollection,
+    onClick: () -> Unit
+) {
     Card(
+        onClick = onClick,
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
