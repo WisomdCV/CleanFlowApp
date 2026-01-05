@@ -117,10 +117,12 @@ class ViewerViewModel(
         val uri = file.uri
         
         viewModelScope.launch {
+            android.util.Log.d("CleanFlow", "confirmDelete triggered for ${file.id}")
             val success = deleteFileUseCase(uri)
             if (success) {
-                println("Permanently deleted ${file.id}")
+                android.util.Log.d("CleanFlow", "Permanently deleted ${file.id}")
             } else {
+                 android.util.Log.e("CleanFlow", "Failed to delete ${file.id}")
                  // Restore if failed?
                  restoreDeletedFile()
                  // Maybe show error toast
@@ -150,6 +152,25 @@ class ViewerViewModel(
     
     fun consumeSnackbar() {
         _onShowSnackbar.value = false
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        val file = pendingDeleteFile
+        android.util.Log.d("CleanFlow", "ViewerViewModel onCleared. Pending file: ${file?.id}")
+        
+        if (file != null) {
+            // Use a standalone scope + IO dispatcher to ensure this survives ViewModel cancellation
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                try {
+                    android.util.Log.d("CleanFlow", "Starting final delete in onCleared for ${file.id}")
+                    val success = deleteFileUseCase(file.uri)
+                    android.util.Log.d("CleanFlow", "Final delete result for ${file.id}: $success")
+                } catch (e: Exception) {
+                    android.util.Log.e("CleanFlow", "Exception in onCleared delete", e)
+                }
+            }
+        }
     }
 
     @Suppress("UNCHECKED_CAST")

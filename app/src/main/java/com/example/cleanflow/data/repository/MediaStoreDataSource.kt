@@ -80,12 +80,14 @@ class MediaStoreDataSource(private val context: Context) {
         return mediaList
     }
     fun deleteFile(uri: String): Boolean {
+        android.util.Log.d("CleanFlow", "Attempting to delete file: $uri")
         return try {
             val contentUri = android.net.Uri.parse(uri)
             val rowsDeleted = context.contentResolver.delete(contentUri, null, null)
+            android.util.Log.d("CleanFlow", "Delete result: $rowsDeleted rows deleted")
             rowsDeleted > 0
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("CleanFlow", "Error deleting file: ${e.message}", e)
             false
         }
     }
