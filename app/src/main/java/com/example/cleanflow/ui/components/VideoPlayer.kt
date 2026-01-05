@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,18 +28,40 @@ import androidx.media3.ui.PlayerView
 fun VideoPlayer(
     uri: Uri,
     playWhenReady: Boolean,
-    isContentFit: Boolean
+    isContentFit: Boolean,
+    playbackSpeed: Float = 1.0f,
+    seekToPosition: Long? = null,
+    onProgress: (Long, Long) -> Unit = { _, _ -> },
+    onVideoReady: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
 
     // We keep track of the player in a state to release it properly
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
+    
+    // Manage polling for progress
+    LaunchedEffect(player, playWhenReady) {
+        val p = player ?: return@LaunchedEffect
+        while (true) {
+            if (p.isPlaying) {
+                onProgress(p.currentPosition, p.duration)
+            }
+            kotlinx.coroutines.delay(500) // Poll every 500ms
+        }
+    }
 
     DisposableEffect(uri, context) {
         val exoPlayer = ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(uri))
             prepare()
             repeatMode = Player.REPEAT_MODE_ONE
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) {
+                        onVideoReady(duration)
+                    }
+                }
+            })
         }
         player = exoPlayer
 
@@ -52,6 +75,18 @@ fun VideoPlayer(
     DisposableEffect(playWhenReady, player) {
         player?.playWhenReady = playWhenReady
         onDispose {}
+    }
+    
+    // React to Speed changes
+    LaunchedEffect(playbackSpeed, player) {
+        player?.setPlaybackSpeed(playbackSpeed)
+    }
+    
+    // React to Seek
+    LaunchedEffect(seekToPosition, player) {
+        if (seekToPosition != null && seekToPosition >= 0) {
+            player?.seekTo(seekToPosition)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

@@ -79,4 +79,14 @@ class MediaStoreDataSource(private val context: Context) {
         }
         return mediaList
     }
+    fun deleteFile(uri: String): Boolean {
+        return try {
+            val contentUri = android.net.Uri.parse(uri)
+            val rowsDeleted = context.contentResolver.delete(contentUri, null, null)
+            rowsDeleted > 0
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }

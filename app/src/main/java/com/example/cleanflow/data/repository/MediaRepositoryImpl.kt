@@ -66,4 +66,10 @@ class MediaRepositoryImpl(
             type = type
         )
     }
+    override suspend fun deleteFile(uri: String): Boolean {
+        // We run this on IO dispatcher implicitly by caller or enforce it?
+        // DataSource access should be safe, but let's be explicit if complex.
+        // Simple call for now.
+        return dataSource.deleteFile(uri)
+    }
 }
