@@ -12,8 +12,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.cleanflow.data.repository.MediaRepositoryImpl
 import com.example.cleanflow.data.repository.MediaStoreDataSource
+import com.example.cleanflow.data.repository.SettingsRepository
 import com.example.cleanflow.ui.screens.home.DashboardScreen
 import com.example.cleanflow.ui.screens.home.HomeViewModel
+import com.example.cleanflow.ui.screens.settings.SettingsScreen
 import com.example.cleanflow.ui.screens.viewer.MediaViewerScreen
 import com.example.cleanflow.ui.screens.viewer.ViewerViewModel
 import com.example.cleanflow.ui.theme.CleanFlowTheme
@@ -26,6 +28,7 @@ class MainActivity : ComponentActivity() {
         // Manual Dependency Injection
         val dataSource = MediaStoreDataSource(applicationContext)
         val repository = MediaRepositoryImpl(dataSource)
+        val settingsRepository = SettingsRepository(applicationContext)
         
         setContent {
             CleanFlowTheme {
@@ -43,19 +46,11 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             onCollectionClick = { collectionId ->
                                 navController.navigate("viewer/$collectionId")
+                            },
+                            onSettingsClick = {
+                                navController.navigate("settings")
                             }
                         )
-                        
-                        // We need to pass navigation callback to DashboardScreen or handle it here.
-                        // Since DashboardScreen didn't have a callback in previous step, 
-                        // I will assume I need to modify DashboardScreen to expose onCollectionClick
-                        // OR (cleaner for this step without editing recent file) 
-                        // I will modify DashboardScreen in next step OR use a workaround if possible?
-                        // No, passing callback is best practice.
-                        // But wait, the previous DashboardScreen implementation does NOT have an onClick callback.
-                        // I need to update DashboardScreen first? Or I can update it after. 
-                        // I will update MainActivity now, but DashboardScreen will technically not trigger navigation yet.
-                        // I will update DashboardScreen in the next step to accept the callback.
                     }
                     
                     composable(
@@ -65,11 +60,18 @@ class MainActivity : ComponentActivity() {
                         val collectionId = backStackEntry.arguments?.getString("collectionId") ?: ""
                         
                         val viewModel: ViewerViewModel = viewModel(
-                            factory = ViewerViewModel.Factory(repository, collectionId)
+                            factory = ViewerViewModel.Factory(repository, settingsRepository, collectionId)
                         )
                         
                         MediaViewerScreen(
                             viewModel = viewModel,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("settings") {
+                        SettingsScreen(
+                            repository = settingsRepository,
                             onBackClick = { navController.popBackStack() }
                         )
                     }

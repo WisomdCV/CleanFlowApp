@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cleanflow.domain.model.MediaFile
 import com.example.cleanflow.domain.repository.MediaRepository
+import com.example.cleanflow.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,11 +20,15 @@ data class ViewerUiState(
 
 class ViewerViewModel(
     private val repository: MediaRepository,
+    private val settingsRepository: SettingsRepository,
     private val collectionId: String
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ViewerUiState())
     val uiState: StateFlow<ViewerUiState> = _uiState.asStateFlow()
+
+    // Expose preferences
+    val userPreferences = settingsRepository.userPreferences
 
     init {
         loadFiles()
@@ -42,10 +47,11 @@ class ViewerViewModel(
     @Suppress("UNCHECKED_CAST")
     class Factory(
         private val repository: MediaRepository,
+        private val settingsRepository: SettingsRepository,
         private val collectionId: String
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ViewerViewModel(repository, collectionId) as T
+            return ViewerViewModel(repository, settingsRepository, collectionId) as T
         }
     }
 }

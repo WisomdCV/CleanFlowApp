@@ -25,9 +25,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -42,10 +47,13 @@ fun MediaViewerScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val preferences by viewModel.userPreferences.collectAsState(initial = null)
+    
     val files = uiState.files
 
-    if (files.isNotEmpty()) {
+    if (files.isNotEmpty() && preferences != null) {
         val pagerState = rememberPagerState(pageCount = { files.size })
+        val userPrefs = preferences!!
 
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             VerticalPager(
@@ -54,19 +62,39 @@ fun MediaViewerScreen(
             ) { page ->
                 val file = files[page]
                 val isCurrentPage = pagerState.currentPage == page
+                
+                // Local state for temporary toggle per item, seeded by preference
+                // We use a key to reset it when scrolling to a new page effectively, 
+                // OR we can keep it strictly local. 
+                // Requirement: "Alterna temporalmente... solo para ese item"
+                var isContentFit by remember(file.id) { 
+                    mutableStateOf(userPrefs.defaultContentScale == com.example.cleanflow.data.repository.ContentScaleMode.FIT) 
+                }
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    isContentFit = !isContentFit
+                                    println("Double tap detected. New Fit State: $isContentFit")
+                                }
+                            )
+                        }
+                ) {
                     if (file.type == MediaType.VIDEO) {
                         VideoPlayer(
                             uri = Uri.parse(file.uri),
-                            playWhenReady = isCurrentPage
+                            playWhenReady = isCurrentPage && userPrefs.autoPlayVideo,
+                            isContentFit = isContentFit
                         )
                     } else {
                         AsyncImage(
                             model = file.uri,
                             contentDescription = file.displayName,
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
+                            contentScale = if (isContentFit) ContentScale.Fit else ContentScale.Crop
                         )
                     }
                 }

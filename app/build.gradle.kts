@@ -56,6 +56,9 @@ dependencies {
 
     // Accompanist
     implementation(libs.accompanist.permissions)
+    
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
 
     // Coil 3
     implementation(libs.coil.compose)

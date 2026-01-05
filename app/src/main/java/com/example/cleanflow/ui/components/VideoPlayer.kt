@@ -26,7 +26,8 @@ import androidx.media3.ui.PlayerView
 @Composable
 fun VideoPlayer(
     uri: Uri,
-    playWhenReady: Boolean
+    playWhenReady: Boolean,
+    isContentFit: Boolean
 ) {
     val context = LocalContext.current
 
@@ -47,13 +48,10 @@ fun VideoPlayer(
         }
     }
 
-    // React to playWhenReady changes to play/pause without recreating the player
+    // React to playWhenReady changes
     DisposableEffect(playWhenReady, player) {
         player?.playWhenReady = playWhenReady
-        onDispose {
-            // No cleanup needed here for just the boolean flag, 
-            // the main cleanup happens in the other DisposableEffect
-        }
+        onDispose {}
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -63,11 +61,12 @@ fun VideoPlayer(
                     this.player = player
                     layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
                     useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    resizeMode = if (isContentFit) AspectRatioFrameLayout.RESIZE_MODE_FIT else AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
             },
             update = { playerView ->
                 playerView.player = player
+                playerView.resizeMode = if (isContentFit) AspectRatioFrameLayout.RESIZE_MODE_FIT else AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             },
             modifier = Modifier.fillMaxSize()
         )
