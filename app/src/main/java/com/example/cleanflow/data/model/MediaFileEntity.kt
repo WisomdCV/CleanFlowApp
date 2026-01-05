@@ -11,5 +11,6 @@ data class MediaFileEntity(
     val displayName: String,
     val size: Long,
     val dateAdded: Long,
-    val mimeType: String
+    val mimeType: String,
+    val bucketName: String // Added for grouping
 )
