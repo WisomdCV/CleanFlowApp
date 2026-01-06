@@ -133,4 +133,20 @@ class MediaStoreDataSource(private val context: Context) {
             false
         }
     }
+    
+    /**
+     * Delete file without refreshing cache. Use for bulk deletes.
+     * Call refreshMediaFiles() manually after all deletes are complete.
+     */
+    fun deleteFileWithoutRefresh(uri: String): Boolean {
+        return try {
+            val contentUri = android.net.Uri.parse(uri)
+            val rowsDeleted = context.contentResolver.delete(contentUri, null, null)
+            rowsDeleted > 0
+        } catch (e: Exception) {
+            Log.e("CleanFlow", "Error deleting file: ${e.message}", e)
+            false
+        }
+    }
 }
+

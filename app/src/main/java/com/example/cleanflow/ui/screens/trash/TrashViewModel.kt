@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 data class TrashUiState(
     val trashedFiles: List<TrashedFileEntity> = emptyList(),
     val isLoading: Boolean = true,
+    val isProcessing: Boolean = false,
+    val processingMessage: String = "",
     val totalSize: Long = 0
 )
 
@@ -91,26 +93,41 @@ class TrashViewModel(
     }
 
     /**
-     * Clear all trash - permanently delete all files
+     * Clear all trash - permanently delete all files (optimized)
      */
     fun emptyTrash() {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val files = _uiState.value.trashedFiles
-            var successCount = 0
+            if (files.isEmpty()) return@launch
             
-            for (file in files) {
+            _uiState.update { it.copy(isProcessing = true, processingMessage = "Eliminando...") }
+            
+            var successCount = 0
+            val total = files.size
+            
+            for ((index, file) in files.withIndex()) {
                 try {
-                    val deleted = mediaRepository.deleteFile(file.uri)
+                    // Update progress message
+                    _uiState.update { 
+                        it.copy(processingMessage = "Eliminando ${index + 1} de $total...") 
+                    }
+                    
+                    // Use delete WITHOUT refresh for bulk operations
+                    val deleted = mediaRepository.deleteFileWithoutRefresh(file.uri)
                     if (deleted) successCount++
                 } catch (e: Exception) {
                     Log.e("CleanFlow", "Failed to delete ${file.mediaId}: ${e.message}")
                 }
             }
             
-            // Clear all from DB regardless
+            // Clear all from DB
             trashRepository.clearTrash()
             
-            _snackbarMessage.value = "Se eliminaron $successCount de ${files.size} archivos"
+            // Single refresh at the end
+            mediaRepository.refreshCache()
+            
+            _uiState.update { it.copy(isProcessing = false, processingMessage = "") }
+            _snackbarMessage.value = "Se eliminaron $successCount de $total archivos"
         }
     }
 

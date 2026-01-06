@@ -67,5 +67,12 @@ class MediaRepositoryImpl(
     override suspend fun deleteFile(uri: String): Boolean {
         return dataSource.deleteFile(uri)
     }
+    
+    override suspend fun deleteFileWithoutRefresh(uri: String): Boolean {
+        return dataSource.deleteFileWithoutRefresh(uri)
+    }
+    
+    override fun refreshCache() {
+        dataSource.refreshMediaFiles()
+    }
 }
-

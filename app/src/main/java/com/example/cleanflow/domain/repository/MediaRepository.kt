@@ -8,4 +8,7 @@ interface MediaRepository {
     fun getAllCollections(): Flow<List<MediaCollection>>
     fun getFilesByCollection(collectionId: String): Flow<List<MediaFile>>
     suspend fun deleteFile(uri: String): Boolean
+    suspend fun deleteFileWithoutRefresh(uri: String): Boolean
+    fun refreshCache()
 }
+

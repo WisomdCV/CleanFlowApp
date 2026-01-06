@@ -368,6 +368,52 @@ fun MediaViewerScreen(
             }
         )
     } else {
-         Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+        // Empty state - all files deleted or loading
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No hay más archivos",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Todos los archivos fueron eliminados",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                FloatingActionButton(
+                    onClick = onBackClick,
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Volver")
+                    }
+                }
+            }
+        }
     }
 }

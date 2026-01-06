@@ -160,6 +160,21 @@ fun TrashScreen(
             }
 
             when {
+                uiState.isProcessing -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = uiState.processingMessage,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
                 uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
