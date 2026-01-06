@@ -7,26 +7,26 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.cleanflow.domain.model.ContentScaleMode
+import com.example.cleanflow.domain.model.UserPreferences
+import com.example.cleanflow.domain.repository.SettingsRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-enum class ContentScaleMode {
-    FIT, CROP
-}
-
-data class UserPreferences(
-    val autoPlayVideo: Boolean = true,
-    val defaultContentScale: ContentScaleMode = ContentScaleMode.CROP
-)
-
-class SettingsRepository(private val context: Context) {
+@Singleton
+class SettingsRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context
+) : SettingsRepository {
 
     private val AUTO_PLAY_KEY = booleanPreferencesKey("auto_play")
     private val CONTENT_SCALE_KEY = stringPreferencesKey("content_scale")
 
-    val userPreferences: Flow<UserPreferences> = context.dataStore.data
+    override val userPreferences: Flow<UserPreferences> = context.dataStore.data
         .map { preferences ->
             val autoPlay = preferences[AUTO_PLAY_KEY] ?: true
             val scaleName = preferences[CONTENT_SCALE_KEY] ?: ContentScaleMode.CROP.name
@@ -38,13 +38,13 @@ class SettingsRepository(private val context: Context) {
             UserPreferences(autoPlay, scale)
         }
 
-    suspend fun toggleAutoPlay(currentValue: Boolean) {
+    override suspend fun toggleAutoPlay(currentValue: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[AUTO_PLAY_KEY] = !currentValue
         }
     }
 
-    suspend fun setContentScale(mode: ContentScaleMode) {
+    override suspend fun setContentScale(mode: ContentScaleMode) {
         context.dataStore.edit { preferences ->
             preferences[CONTENT_SCALE_KEY] = mode.name
         }

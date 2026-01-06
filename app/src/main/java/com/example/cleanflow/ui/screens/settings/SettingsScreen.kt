@@ -3,14 +3,13 @@ package com.example.cleanflow.ui.screens.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,17 +28,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.cleanflow.data.repository.ContentScaleMode
-import com.example.cleanflow.data.repository.SettingsRepository
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.cleanflow.domain.model.ContentScaleMode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    repository: SettingsRepository,
+    viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit
 ) {
-    val preferences by repository.userPreferences.collectAsState(initial = null)
+    val preferences by viewModel.userPreferences.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -86,12 +85,15 @@ fun SettingsScreen(
                     Switch(
                         checked = prefs.autoPlayVideo,
                         onCheckedChange = { 
-                            scope.launch { repository.toggleAutoPlay(prefs.autoPlayVideo) }
+                            scope.launch { viewModel.toggleAutoPlay(prefs.autoPlayVideo) }
                         }
                     )
                 }
 
-                HorizontalDivider()
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
 
                 // Content Scale Selector
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -104,7 +106,7 @@ fun SettingsScreen(
                             SegmentedButton(
                                 selected = prefs.defaultContentScale == mode,
                                 onClick = { 
-                                    scope.launch { repository.setContentScale(mode) }
+                                    scope.launch { viewModel.setContentScale(mode) }
                                 },
                                 shape = SegmentedButtonDefaults.itemShape(
                                     index = index,
@@ -119,12 +121,4 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-@Composable
-fun HorizontalDivider() {
-    androidx.compose.material3.HorizontalDivider(
-        modifier = Modifier.padding(vertical = 8.dp),
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
 }

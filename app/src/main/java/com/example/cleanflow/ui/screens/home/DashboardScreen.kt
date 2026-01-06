@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -32,8 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.example.cleanflow.R
 import com.example.cleanflow.domain.model.MediaCollection
@@ -41,7 +43,6 @@ import com.example.cleanflow.util.FileSizeFormatter
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -168,10 +169,10 @@ fun DashboardScreen(
                                     val intent = android.content.Intent(
                                         android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
                                     ).apply {
-                                        data = android.net.Uri.parse("package:${context.packageName}")
+                                        data = "package:${context.packageName}".toUri()
                                     }
                                     context.startActivity(intent)
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                     // Fallback if the specific intent fails
                                     val intent = android.content.Intent(
                                         android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
@@ -211,7 +212,7 @@ fun DashboardContent(
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = FileSizeFormatter.format(uiState.totalSpaceUsed),
+                    text = FileSizeFormatter.format(uiState.totalSize),
                     style = MaterialTheme.typography.displayMedium,
                     color = MaterialTheme.colorScheme.primary
                 )

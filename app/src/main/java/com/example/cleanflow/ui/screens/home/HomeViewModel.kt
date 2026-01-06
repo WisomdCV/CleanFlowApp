@@ -1,24 +1,26 @@
 package com.example.cleanflow.ui.screens.home
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cleanflow.domain.model.MediaCollection
 import com.example.cleanflow.domain.repository.MediaRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class HomeUiState(
     val isLoading: Boolean = true,
     val collections: List<MediaCollection> = emptyList(),
-    val totalSpaceUsed: Long = 0
+    val totalSize: Long = 0
 )
 
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val repository: MediaRepository
 ) : ViewModel() {
 
@@ -37,17 +39,10 @@ class HomeViewModel(
                     it.copy(
                         isLoading = false,
                         collections = collections,
-                        totalSpaceUsed = totalSize
+                        totalSize = totalSize
                     )
                 }
             }
-        }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    class Factory(private val repository: MediaRepository) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return HomeViewModel(repository) as T
         }
     }
 }

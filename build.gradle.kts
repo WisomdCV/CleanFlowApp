@@ -3,4 +3,15 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.hilt.android) apply false
+}
+
+// Force JavaPoet version to fix Hilt compatibility issue
+subprojects {
+    configurations.configureEach {
+        resolutionStrategy {
+            force("com.squareup:javapoet:1.13.0")
+        }
+    }
 }
