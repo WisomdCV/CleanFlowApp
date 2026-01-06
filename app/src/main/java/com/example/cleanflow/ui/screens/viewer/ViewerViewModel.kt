@@ -1,12 +1,13 @@
 package com.example.cleanflow.ui.screens.viewer
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cleanflow.domain.model.MediaFile
 import com.example.cleanflow.domain.repository.MediaRepository
 import com.example.cleanflow.data.repository.SettingsRepository
-import com.example.cleanflow.domain.usecase.DeleteFileUseCase
+import com.example.cleanflow.data.repository.TrashRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +23,7 @@ data class ViewerUiState(
 class ViewerViewModel(
     private val repository: MediaRepository,
     private val settingsRepository: SettingsRepository,
+    private val trashRepository: TrashRepository,
     private val collectionId: String
 ) : ViewModel() {
 
@@ -30,21 +32,14 @@ class ViewerViewModel(
 
     // Expose preferences
     val userPreferences = settingsRepository.userPreferences
-
-    // Delete UseCase
-    private val deleteFileUseCase = DeleteFileUseCase(repository)
     
     // Commands regarding navigation
     private val _navigationEvent = MutableStateFlow<Int?>(null)
     val navigationEvent: StateFlow<Int?> = _navigationEvent.asStateFlow()
 
-    // Safe Delete State
-    private var pendingDeleteFile: MediaFile? = null
-    private var pendingDeleteIndex: Int = -1
-
-    // Events
-    private val _onShowSnackbar = MutableStateFlow<Boolean>(false)
-    val onShowSnackbar: StateFlow<Boolean> = _onShowSnackbar.asStateFlow()
+    // Snackbar message event
+    private val _snackbarMessage = MutableStateFlow<String?>(null)
+    val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
     init {
         loadFiles()
@@ -53,93 +48,28 @@ class ViewerViewModel(
     private fun loadFiles() {
         viewModelScope.launch {
             repository.getFilesByCollection(collectionId).collectLatest { files ->
-                // If we have a pending delete, we should filter it out from the "source of truth"
-                // until it's confirmed. Or, we use a local UI state entirely.
-                // Simpler approach: Rely on local list modification for "Pending" state if possible, 
-                // but since we collectLatest from Repo, treating the Repo as source of truth is redundant IF we don't modify repo.
-                // BETTER: We manage a local list merge.
-                // For this iteration, let's keep it simple: 
-                // 1. Optimistic: Remove from UI list copy. 
-                // 2. Repo update triggers overwrite, so we must be careful. 
-                // If we remove from UI list locally, and then Repo emits same list, our removal is lost?
-                // NO, because we update _uiState. To make this persist across repo updates, 
-                // we'd need to filter the incoming repo list against pending IDs.
-                
-                val currentPendingId = pendingDeleteFile?.id ?: -1L
-                val visibleFiles = files.filter { it.id != currentPendingId }
-                
                 _uiState.update {
-                    it.copy(files = visibleFiles)
+                    it.copy(files = files)
                 }
             }
         }
     }
 
-    // Called when user taps Delete
-    fun prepareDelete(file: MediaFile, index: Int) {
-        pendingDeleteFile = file
-        pendingDeleteIndex = index
-        
-        // Optimistic Remove
-        _uiState.update { state ->
-            val mutableList = state.files.toMutableList()
-            mutableList.remove(file)
-            state.copy(files = mutableList)
-        }
-        
-        // Show Snackbar
-        _onShowSnackbar.value = true
-    }
-
-    fun restoreDeletedFile() {
-        val file = pendingDeleteFile ?: return
-        
-        // Restore to UI Logic
-        // We trigger a reload effectively, or insert back at index.
-        // Easiest: clear pending, reload from repo will auto-add it (since it wasn't deleted from disk).
-        // BUT we need immediate UI reaction.
-        
-        _uiState.update { state ->
-            val mutableList = state.files.toMutableList()
-            // Safety check for index bounds
-            val index = pendingDeleteIndex.coerceIn(0, mutableList.size)
-            mutableList.add(index, file)
-            state.copy(files = mutableList)
-        }
-        
-        pendingDeleteFile = null
-        pendingDeleteIndex = -1
-        _onShowSnackbar.value = false
-    }
-
-    fun confirmDelete() {
-        val file = pendingDeleteFile ?: return
-        val uri = file.uri
-        
+    /**
+     * Move file to trash. This is immediate and reliable.
+     * The file will be filtered out from the grid automatically.
+     */
+    fun moveToTrash(file: MediaFile) {
         viewModelScope.launch {
-            android.util.Log.d("CleanFlow", "confirmDelete triggered for ${file.id}")
-            val success = deleteFileUseCase(uri)
-            if (success) {
-                android.util.Log.d("CleanFlow", "Permanently deleted ${file.id}")
-            } else {
-                 android.util.Log.e("CleanFlow", "Failed to delete ${file.id}")
-                 // Restore if failed?
-                 restoreDeletedFile()
-                 // Maybe show error toast
+            try {
+                trashRepository.addToTrash(file, collectionId)
+                Log.d("CleanFlow", "Moved to trash: ${file.id} - ${file.displayName}")
+                _snackbarMessage.value = "Enviado a papelera"
+            } catch (e: Exception) {
+                Log.e("CleanFlow", "Failed to move to trash: ${e.message}", e)
+                _snackbarMessage.value = "Error al mover a papelera"
             }
-            // Clear pending regardless (transaction done)
-            pendingDeleteFile = null
-            pendingDeleteIndex = -1
-            _onShowSnackbar.value = false
         }
-    }
-    
-    fun dismissSnackbar() {
-        // If dismissed without Action (Undo), we confirm delete
-        if (pendingDeleteFile != null) {
-            confirmDelete()
-        }
-        _onShowSnackbar.value = false
     }
 
     fun keepCurrentFile(currentIndex: Int) {
@@ -151,36 +81,18 @@ class ViewerViewModel(
     }
     
     fun consumeSnackbar() {
-        _onShowSnackbar.value = false
-    }
-    
-    override fun onCleared() {
-        super.onCleared()
-        val file = pendingDeleteFile
-        android.util.Log.d("CleanFlow", "ViewerViewModel onCleared. Pending file: ${file?.id}")
-        
-        if (file != null) {
-            // Use a standalone scope + IO dispatcher to ensure this survives ViewModel cancellation
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                try {
-                    android.util.Log.d("CleanFlow", "Starting final delete in onCleared for ${file.id}")
-                    val success = deleteFileUseCase(file.uri)
-                    android.util.Log.d("CleanFlow", "Final delete result for ${file.id}: $success")
-                } catch (e: Exception) {
-                    android.util.Log.e("CleanFlow", "Exception in onCleared delete", e)
-                }
-            }
-        }
+        _snackbarMessage.value = null
     }
 
     @Suppress("UNCHECKED_CAST")
     class Factory(
         private val repository: MediaRepository,
         private val settingsRepository: SettingsRepository,
+        private val trashRepository: TrashRepository,
         private val collectionId: String
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ViewerViewModel(repository, settingsRepository, collectionId) as T
+            return ViewerViewModel(repository, settingsRepository, trashRepository, collectionId) as T
         }
     }
 }

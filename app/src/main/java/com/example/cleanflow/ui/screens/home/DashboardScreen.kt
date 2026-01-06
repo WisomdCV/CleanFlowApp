@@ -48,7 +48,8 @@ import com.google.accompanist.permissions.rememberPermissionState
 fun DashboardScreen(
     viewModel: HomeViewModel,
     onCollectionClick: (String) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onTrashClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -111,6 +112,12 @@ fun DashboardScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
                 actions = {
+                    androidx.compose.material3.IconButton(onClick = onTrashClick) {
+                        androidx.compose.material3.Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Delete,
+                            contentDescription = "Papelera"
+                        )
+                    }
                     androidx.compose.material3.IconButton(onClick = onSettingsClick) {
                         androidx.compose.material3.Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.Settings,

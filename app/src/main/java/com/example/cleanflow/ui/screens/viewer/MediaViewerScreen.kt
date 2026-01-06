@@ -73,7 +73,7 @@ fun MediaViewerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val preferences by viewModel.userPreferences.collectAsState(initial = null)
     val navigationEvent by viewModel.navigationEvent.collectAsState()
-    val showSnackbar by viewModel.onShowSnackbar.collectAsState()
+    val snackbarMessage by viewModel.snackbarMessage.collectAsState()
     
     val context = LocalContext.current
     val files = uiState.files
@@ -82,23 +82,13 @@ fun MediaViewerScreen(
     val scope = rememberCoroutineScope()
 
     // Handle Snackbar Trigger
-    LaunchedEffect(showSnackbar) {
-        if (showSnackbar) {
-            scope.launch {
-                val result = snackbarHostState.showSnackbar(
-                    message = "Archivo eliminado",
-                    actionLabel = "DESHACER",
-                    duration = SnackbarDuration.Short
-                )
-                when (result) {
-                    SnackbarResult.ActionPerformed -> {
-                        viewModel.restoreDeletedFile()
-                    }
-                    SnackbarResult.Dismissed -> {
-                        viewModel.dismissSnackbar()
-                    }
-                }
-            }
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.consumeSnackbar()
         }
     }
 
@@ -350,7 +340,7 @@ fun MediaViewerScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         FloatingActionButton(
                                             onClick = { 
-                                                 viewModel.prepareDelete(currentFile, pagerState.currentPage)
+                                                 viewModel.moveToTrash(currentFile)
                                             },
                                             containerColor = MaterialTheme.colorScheme.error,
                                             modifier = Modifier.size(56.dp)
