@@ -10,6 +10,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.cleanflow.ui.screens.gallery.GalleryScreen
+import com.example.cleanflow.ui.screens.gallery.GalleryViewModel
 import com.example.cleanflow.ui.screens.home.DashboardScreen
 import com.example.cleanflow.ui.screens.home.HomeViewModel
 import com.example.cleanflow.ui.screens.settings.SettingsScreen
@@ -38,7 +40,8 @@ class MainActivity : ComponentActivity() {
                         DashboardScreen(
                             viewModel = viewModel,
                             onCollectionClick = { collectionId ->
-                                navController.navigate("viewer/$collectionId")
+                                // Navigate to Gallery instead of Viewer
+                                navController.navigate("gallery/$collectionId")
                             },
                             onSettingsClick = {
                                 navController.navigate("settings")
@@ -49,9 +52,33 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
+                    // New: Gallery screen (Grid view)
                     composable(
-                        route = "viewer/{collectionId}",
+                        route = "gallery/{collectionId}",
                         arguments = listOf(navArgument("collectionId") { type = NavType.StringType })
+                    ) {
+                        val viewModel: GalleryViewModel = hiltViewModel()
+                        
+                        GalleryScreen(
+                            viewModel = viewModel,
+                            onFileClick = { index ->
+                                val collectionId = it.arguments?.getString("collectionId") ?: ""
+                                navController.navigate("viewer/$collectionId?initialIndex=$index")
+                            },
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
+                    
+                    // Updated: Viewer with optional initialIndex
+                    composable(
+                        route = "viewer/{collectionId}?initialIndex={initialIndex}",
+                        arguments = listOf(
+                            navArgument("collectionId") { type = NavType.StringType },
+                            navArgument("initialIndex") { 
+                                type = NavType.IntType
+                                defaultValue = 0
+                            }
+                        )
                     ) {
                         val viewModel: ViewerViewModel = hiltViewModel()
                         

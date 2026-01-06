@@ -93,7 +93,10 @@ fun MediaViewerScreen(
     }
 
     if (files.isNotEmpty() && preferences != null) {
-        val pagerState = rememberPagerState(pageCount = { files.size })
+        val pagerState = rememberPagerState(
+            initialPage = uiState.initialIndex.coerceIn(0, files.size - 1),
+            pageCount = { files.size }
+        )
         val userPrefs = preferences!!
 
         // Handle auto-navigation

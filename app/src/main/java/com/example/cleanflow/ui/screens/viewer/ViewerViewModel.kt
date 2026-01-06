@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cleanflow.data.repository.TrashRepository
 import com.example.cleanflow.domain.model.MediaFile
-import com.example.cleanflow.domain.model.UserPreferences
 import com.example.cleanflow.domain.repository.MediaRepository
 import com.example.cleanflow.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,7 +19,8 @@ import javax.inject.Inject
 
 data class ViewerUiState(
     val files: List<MediaFile> = emptyList(),
-    val initialIndex: Int = 0
+    val initialIndex: Int = 0,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -32,8 +32,9 @@ class ViewerViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val collectionId: String = savedStateHandle.get<String>("collectionId") ?: ""
+    private val initialIndex: Int = savedStateHandle.get<Int>("initialIndex") ?: 0
 
-    private val _uiState = MutableStateFlow(ViewerUiState())
+    private val _uiState = MutableStateFlow(ViewerUiState(initialIndex = initialIndex))
     val uiState: StateFlow<ViewerUiState> = _uiState.asStateFlow()
 
     val userPreferences = settingsRepository.userPreferences
@@ -51,8 +52,13 @@ class ViewerViewModel @Inject constructor(
     private fun loadFiles() {
         viewModelScope.launch {
             repository.getFilesByCollection(collectionId).collectLatest { files ->
+                // Sort by date descending to match Gallery order
+                val sortedFiles = files.sortedByDescending { it.dateAdded }
                 _uiState.update {
-                    it.copy(files = files)
+                    it.copy(
+                        files = sortedFiles,
+                        isLoading = false
+                    )
                 }
             }
         }
