@@ -5,11 +5,8 @@ import com.example.cleanflow.domain.model.MediaCollection
 import com.example.cleanflow.domain.model.MediaFile
 import com.example.cleanflow.domain.model.MediaType
 import com.example.cleanflow.domain.repository.MediaRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 
 class MediaRepositoryImpl(
     private val dataSource: MediaStoreDataSource,
@@ -18,7 +15,7 @@ class MediaRepositoryImpl(
 
     override fun getAllCollections(): Flow<List<MediaCollection>> = 
         combine(
-            flow { emit(dataSource.getMediaFiles()) }.flowOn(Dispatchers.IO),
+            dataSource.mediaFiles,  // Use cached StateFlow
             trashRepository.trashedIds
         ) { files, trashedIds ->
             // Filter out trashed files
@@ -44,7 +41,7 @@ class MediaRepositoryImpl(
 
     override fun getFilesByCollection(collectionId: String): Flow<List<MediaFile>> = 
         combine(
-            flow { emit(dataSource.getMediaFiles()) }.flowOn(Dispatchers.IO),
+            dataSource.mediaFiles,  // Use cached StateFlow
             trashRepository.trashedIds
         ) { files, trashedIds ->
             files
