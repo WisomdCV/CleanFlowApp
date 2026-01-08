@@ -8,6 +8,8 @@ import com.example.cleanflow.data.repository.TrashRepository
 import com.example.cleanflow.domain.model.MediaFile
 import com.example.cleanflow.domain.repository.MediaRepository
 import com.example.cleanflow.domain.repository.SettingsRepository
+import com.example.cleanflow.domain.util.AppException
+import com.example.cleanflow.domain.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +46,9 @@ class ViewerViewModel @Inject constructor(
 
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+    
+    private val _error = MutableStateFlow<AppException?>(null)
+    val error: StateFlow<AppException?> = _error.asStateFlow()
 
     init {
         loadFiles()
@@ -52,7 +57,6 @@ class ViewerViewModel @Inject constructor(
     private fun loadFiles() {
         viewModelScope.launch {
             repository.getFilesByCollection(collectionId).collectLatest { files ->
-                // Sort by date descending to match Gallery order
                 val sortedFiles = files.sortedByDescending { it.dateAdded }
                 _uiState.update {
                     it.copy(
@@ -66,13 +70,16 @@ class ViewerViewModel @Inject constructor(
 
     fun moveToTrash(file: MediaFile) {
         viewModelScope.launch {
-            try {
-                trashRepository.addToTrash(file, collectionId)
-                Log.d("CleanFlow", "Moved to trash: ${file.id} - ${file.displayName}")
-                _snackbarMessage.value = "Enviado a papelera"
-            } catch (e: Exception) {
-                Log.e("CleanFlow", "Failed to move to trash: ${e.message}", e)
-                _snackbarMessage.value = "Error al mover a papelera"
+            when (val result = trashRepository.addToTrash(file, collectionId)) {
+                is Result.Success -> {
+                    Log.d("CleanFlow", "Moved to trash: ${file.id} - ${file.displayName}")
+                    _snackbarMessage.value = "Enviado a papelera"
+                }
+                is Result.Error -> {
+                    Log.e("CleanFlow", "Failed to move to trash: ${result.exception.message}")
+                    _error.value = result.exception
+                }
+                is Result.Loading -> { /* ignore */ }
             }
         }
     }
@@ -87,5 +94,9 @@ class ViewerViewModel @Inject constructor(
     
     fun consumeSnackbar() {
         _snackbarMessage.value = null
+    }
+    
+    fun consumeError() {
+        _error.value = null
     }
 }

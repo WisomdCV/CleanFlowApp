@@ -56,8 +56,6 @@ fun DashboardScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycleOwner = context as? androidx.lifecycle.LifecycleOwner
     
-    val lifecycleOwner = context as? androidx.lifecycle.LifecycleOwner
-    
     // -- UI Structure --
 
     Scaffold(

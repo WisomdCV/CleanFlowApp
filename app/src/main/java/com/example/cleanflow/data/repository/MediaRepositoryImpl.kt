@@ -5,6 +5,8 @@ import com.example.cleanflow.domain.model.MediaCollection
 import com.example.cleanflow.domain.model.MediaFile
 import com.example.cleanflow.domain.model.MediaType
 import com.example.cleanflow.domain.repository.MediaRepository
+import com.example.cleanflow.domain.util.AppException
+import com.example.cleanflow.domain.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -15,13 +17,10 @@ class MediaRepositoryImpl(
 
     override fun getAllCollections(): Flow<List<MediaCollection>> = 
         combine(
-            dataSource.mediaFiles,  // Use cached StateFlow
+            dataSource.mediaFiles,
             trashRepository.trashedIds
         ) { files, trashedIds ->
-            // Filter out trashed files
             val activeFiles = files.filter { it.id !in trashedIds }
-            
-            // Group by bucketName
             val grouped = activeFiles.groupBy { it.bucketName }
             
             grouped.map { (bucketName, bucketFiles) ->
@@ -41,7 +40,7 @@ class MediaRepositoryImpl(
 
     override fun getFilesByCollection(collectionId: String): Flow<List<MediaFile>> = 
         combine(
-            dataSource.mediaFiles,  // Use cached StateFlow
+            dataSource.mediaFiles,
             trashRepository.trashedIds
         ) { files, trashedIds ->
             files
@@ -64,12 +63,34 @@ class MediaRepositoryImpl(
         )
     }
     
-    override suspend fun deleteFile(uri: String): Boolean {
-        return dataSource.deleteFile(uri)
+    override suspend fun deleteFile(uri: String): Result<Boolean> {
+        return try {
+            val success = dataSource.deleteFile(uri)
+            if (success) {
+                Result.Success(true)
+            } else {
+                Result.Error(AppException.FileNotFound)
+            }
+        } catch (e: SecurityException) {
+            Result.Error(AppException.PermissionDenied)
+        } catch (e: Exception) {
+            Result.Error(AppException.Unknown(e.message ?: "Error al eliminar"))
+        }
     }
     
-    override suspend fun deleteFileWithoutRefresh(uri: String): Boolean {
-        return dataSource.deleteFileWithoutRefresh(uri)
+    override suspend fun deleteFileWithoutRefresh(uri: String): Result<Boolean> {
+        return try {
+            val success = dataSource.deleteFileWithoutRefresh(uri)
+            if (success) {
+                Result.Success(true)
+            } else {
+                Result.Error(AppException.FileNotFound)
+            }
+        } catch (e: SecurityException) {
+            Result.Error(AppException.PermissionDenied)
+        } catch (e: Exception) {
+            Result.Error(AppException.Unknown(e.message ?: "Error al eliminar"))
+        }
     }
     
     override fun refreshCache() {

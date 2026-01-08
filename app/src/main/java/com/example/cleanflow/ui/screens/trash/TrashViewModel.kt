@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.cleanflow.data.local.TrashedFileEntity
 import com.example.cleanflow.data.repository.TrashRepository
 import com.example.cleanflow.domain.repository.MediaRepository
+import com.example.cleanflow.domain.util.AppException
+import com.example.cleanflow.domain.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +37,9 @@ class TrashViewModel @Inject constructor(
 
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
+    
+    private val _error = MutableStateFlow<AppException?>(null)
+    val error: StateFlow<AppException?> = _error.asStateFlow()
 
     init {
         loadTrashedFiles()
@@ -57,32 +62,42 @@ class TrashViewModel @Inject constructor(
 
     fun restoreFile(file: TrashedFileEntity) {
         viewModelScope.launch {
-            try {
-                trashRepository.removeFromTrash(file.mediaId)
-                Log.d("CleanFlow", "Restored from trash: ${file.mediaId} - ${file.displayName}")
-                _snackbarMessage.value = "Archivo restaurado"
-            } catch (e: Exception) {
-                Log.e("CleanFlow", "Failed to restore: ${e.message}", e)
-                _snackbarMessage.value = "Error al restaurar"
+            when (val result = trashRepository.removeFromTrash(file.mediaId)) {
+                is Result.Success -> {
+                    Log.d("CleanFlow", "Restored from trash: ${file.mediaId}")
+                    _snackbarMessage.value = "Archivo restaurado"
+                }
+                is Result.Error -> {
+                    Log.e("CleanFlow", "Failed to restore: ${result.exception.message}")
+                    _error.value = result.exception
+                }
+                is Result.Loading -> { /* ignore */ }
             }
         }
     }
 
     fun permanentlyDelete(file: TrashedFileEntity) {
         viewModelScope.launch {
-            try {
-                trashRepository.removeFromTrash(file.mediaId)
-                val success = mediaRepository.deleteFile(file.uri)
-                if (success) {
+            // First remove from trash DB
+            when (val removeResult = trashRepository.removeFromTrash(file.mediaId)) {
+                is Result.Error -> {
+                    _error.value = removeResult.exception
+                    return@launch
+                }
+                else -> { /* continue */ }
+            }
+            
+            // Then delete from disk
+            when (val deleteResult = mediaRepository.deleteFile(file.uri)) {
+                is Result.Success -> {
                     Log.d("CleanFlow", "Permanently deleted: ${file.mediaId}")
                     _snackbarMessage.value = "Eliminado permanentemente"
-                } else {
-                    Log.e("CleanFlow", "Failed to delete from disk: ${file.mediaId}")
-                    _snackbarMessage.value = "Error al eliminar"
                 }
-            } catch (e: Exception) {
-                Log.e("CleanFlow", "Exception during permanent delete: ${e.message}", e)
-                _snackbarMessage.value = "Error al eliminar"
+                is Result.Error -> {
+                    Log.e("CleanFlow", "Failed to delete: ${deleteResult.exception.message}")
+                    _error.value = deleteResult.exception
+                }
+                is Result.Loading -> { /* ignore */ }
             }
         }
     }
@@ -95,17 +110,21 @@ class TrashViewModel @Inject constructor(
             _uiState.update { it.copy(isProcessing = true, processingMessage = "Eliminando...") }
             
             var successCount = 0
+            var errorCount = 0
             val total = files.size
             
             for ((index, file) in files.withIndex()) {
-                try {
-                    _uiState.update { 
-                        it.copy(processingMessage = "Eliminando ${index + 1} de $total...") 
+                _uiState.update { 
+                    it.copy(processingMessage = "Eliminando ${index + 1} de $total...") 
+                }
+                
+                when (val result = mediaRepository.deleteFileWithoutRefresh(file.uri)) {
+                    is Result.Success -> successCount++
+                    is Result.Error -> {
+                        errorCount++
+                        Log.e("CleanFlow", "Failed to delete ${file.mediaId}: ${result.exception.message}")
                     }
-                    val deleted = mediaRepository.deleteFileWithoutRefresh(file.uri)
-                    if (deleted) successCount++
-                } catch (e: Exception) {
-                    Log.e("CleanFlow", "Failed to delete ${file.mediaId}: ${e.message}")
+                    is Result.Loading -> { /* ignore */ }
                 }
             }
             
@@ -113,11 +132,20 @@ class TrashViewModel @Inject constructor(
             mediaRepository.refreshCache()
             
             _uiState.update { it.copy(isProcessing = false, processingMessage = "") }
-            _snackbarMessage.value = "Se eliminaron $successCount de $total archivos"
+            
+            if (errorCount > 0) {
+                _snackbarMessage.value = "Eliminados $successCount de $total ($errorCount errores)"
+            } else {
+                _snackbarMessage.value = "Se eliminaron $successCount archivos"
+            }
         }
     }
 
     fun consumeSnackbar() {
         _snackbarMessage.value = null
+    }
+    
+    fun consumeError() {
+        _error.value = null
     }
 }

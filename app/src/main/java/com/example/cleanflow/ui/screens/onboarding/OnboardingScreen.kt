@@ -114,23 +114,12 @@ fun OnboardingScreen(
                 Box(
                     modifier = Modifier.scale(scale)
                 ) {
-                    // Placeholder for logo if we have one, otherwise icon
-                    // Using the new resource we copied: R.drawable.app_logo
-                    // If check fails, fallback to icon
-                    try {
-                        Image(
-                            painter = painterResource(id = R.drawable.app_logo),
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(180.dp)
-                        )
-                    } catch (e: Exception) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Logo Placeholder",
-                            modifier = Modifier.size(120.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    // Logo image
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "Logo",
+                        modifier = Modifier.size(180.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(48.dp))
