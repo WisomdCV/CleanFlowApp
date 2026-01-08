@@ -12,5 +12,6 @@ data class MediaFile(
     val size: Long,
     val dateAdded: Long,
     val mimeType: String,
-    val type: MediaType
+    val type: MediaType,
+    val duration: Long = 0 // Duration in milliseconds (for videos)
 )

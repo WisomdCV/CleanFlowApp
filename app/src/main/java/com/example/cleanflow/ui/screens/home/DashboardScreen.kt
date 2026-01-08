@@ -92,8 +92,7 @@ fun DashboardScreen(
             // Dashboard content directly here (remove canShowContent check)
             DashboardContent(
                 uiState = uiState,
-                onCollectionClick = onCollectionClick,
-                modifier = Modifier.padding(paddingValues)
+                onCollectionClick = onCollectionClick
             )
     }
     }
