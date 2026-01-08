@@ -32,8 +32,29 @@ class MainActivity : ComponentActivity() {
             CleanFlowTheme {
                 val navController = rememberNavController()
                 
-                NavHost(navController = navController, startDestination = "dashboard") {
+                // Determine start destination
+                val hasPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    android.os.Environment.isExternalStorageManager()
+                } else {
+                    // For older androids, we assume onboarding handles it or check specific permissions
+                    // For simplicity in this demo, strict check:
+                    false 
+                }
+                
+                NavHost(navController = navController, startDestination = if (hasPermission) "dashboard" else "onboarding") {
                     
+                    composable("onboarding") {
+                        val viewModel: com.example.cleanflow.ui.screens.onboarding.OnboardingViewModel = hiltViewModel()
+                        com.example.cleanflow.ui.screens.onboarding.OnboardingScreen(
+                            viewModel = viewModel,
+                            onPermissionGranted = {
+                                navController.navigate("dashboard") {
+                                    popUpTo("onboarding") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+
                     composable("dashboard") {
                         val viewModel: HomeViewModel = hiltViewModel()
                         

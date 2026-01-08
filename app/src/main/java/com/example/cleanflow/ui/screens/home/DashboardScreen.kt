@@ -56,52 +56,8 @@ fun DashboardScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycleOwner = context as? androidx.lifecycle.LifecycleOwner
     
-    // -- Permission State Management --
+    val lifecycleOwner = context as? androidx.lifecycle.LifecycleOwner
     
-    // 1. "All Files Access" for Android 11+ (R)
-    val isStorageManagerState = androidx.compose.runtime.remember {
-        androidx.compose.runtime.mutableStateOf(
-             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                 android.os.Environment.isExternalStorageManager()
-             } else {
-                 true // Not required/applicable for < Android 11 in this specific logic block
-             }
-        )
-    }
-    val isStorageManager = isStorageManagerState.value
-    
-    // Refresh "All Files Access" status when resuming (e.g. coming back from Settings)
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                     isStorageManagerState.value = android.os.Environment.isExternalStorageManager()
-                 }
-            }
-        }
-        lifecycleOwner?.lifecycle?.addObserver(observer)
-        onDispose { lifecycleOwner?.lifecycle?.removeObserver(observer) }
-    }
-
-    // 2. Standard Permissions for older Android versions (< R) or if we want to fallback?
-    // Actually, for a "Cleaner" app on R+, MANAGE_EXTERNAL_STORAGE is best.
-    // We will only use the runtime permissions block if we are BELOW Android 11.
-    val useRuntimePermissions = Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-
-    val permissions = if (useRuntimePermissions) {
-        listOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    } else {
-        emptyList()
-    }
-    
-    val permissionState = rememberMultiplePermissionsState(permissions = permissions)
-    
-    LaunchedEffect(key1 = useRuntimePermissions) {
-        if (useRuntimePermissions && !permissionState.allPermissionsGranted) {
-            permissionState.launchMultiplePermissionRequest()
-        }
-    }
-
     // -- UI Structure --
 
     Scaffold(
@@ -130,65 +86,18 @@ fun DashboardScreen(
         }
     ) { paddingValues ->
         
-        // Check conditions to show content
-        val canShowContent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            isStorageManager
-        } else {
-            permissionState.allPermissionsGranted
-        }
-
-        if (canShowContent) {
+        Column(
+            modifier = androidx.compose.ui.Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Dashboard content directly here (remove canShowContent check)
             DashboardContent(
                 uiState = uiState,
                 onCollectionClick = onCollectionClick,
                 modifier = Modifier.padding(paddingValues)
             )
-        } else {
-            // Permission Request UI
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) 
-                            "Se requiere acceso total a archivos para limpiar media de otras apps."
-                        else 
-                            "Se requieren permisos de almacenamiento para escanear.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                    
-                    androidx.compose.material3.Button(
-                        onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                try {
-                                    val intent = android.content.Intent(
-                                        android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
-                                    ).apply {
-                                        data = "package:${context.packageName}".toUri()
-                                    }
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                    // Fallback if the specific intent fails
-                                    val intent = android.content.Intent(
-                                        android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                                    )
-                                    context.startActivity(intent)
-                                }
-                            } else {
-                                permissionState.launchMultiplePermissionRequest()
-                            }
-                        }
-                    ) {
-                        Text("Conceder Permiso")
-                    }
-                }
-            }
-        }
+    }
     }
 }
 
