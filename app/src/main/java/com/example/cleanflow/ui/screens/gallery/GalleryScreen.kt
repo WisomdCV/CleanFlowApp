@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -102,6 +103,17 @@ fun GalleryScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                         }
                     },
+                    actions = {
+                        IconButton(
+                            onClick = { viewModel.refresh() },
+                            enabled = !uiState.isRefreshing
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Actualizar"
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -144,52 +156,72 @@ fun GalleryScreen(
                 }
             }
             else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                        .padding(paddingValues)
                 ) {
-                    items(
-                        items = uiState.items,
-                        key = { item ->
-                            when (item) {
-                                is GalleryItem.Header -> "header_${item.title}"
-                                is GalleryItem.Media -> "media_${item.file.id}"
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        items(
+                            items = uiState.items,
+                            key = { item ->
+                                when (item) {
+                                    is GalleryItem.Header -> "header_${item.title}"
+                                    is GalleryItem.Media -> "media_${item.file.id}"
+                                }
+                            },
+                            span = { item ->
+                                when (item) {
+                                    is GalleryItem.Header -> GridItemSpan(maxLineSpan)
+                                    is GalleryItem.Media -> GridItemSpan(1)
+                                }
                             }
-                        },
-                        span = { item ->
+                        ) { item ->
                             when (item) {
-                                is GalleryItem.Header -> GridItemSpan(maxLineSpan)
-                                is GalleryItem.Media -> GridItemSpan(1)
+                                is GalleryItem.Header -> {
+                                    DateHeader(title = item.title)
+                                }
+                                is GalleryItem.Media -> {
+                                    MediaThumbnail(
+                                        item = item,
+                                        isSelectionMode = uiState.isSelectionMode,
+                                        isSelected = uiState.selectedIds.contains(item.file.id),
+                                        onClick = {
+                                            if (uiState.isSelectionMode) {
+                                                viewModel.toggleItemSelection(item.file.id)
+                                            } else {
+                                                onFileClick(item.originalIndex)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (!uiState.isSelectionMode) {
+                                                viewModel.activateSelectionMode(item.file.id)
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
-                    ) { item ->
-                        when (item) {
-                            is GalleryItem.Header -> {
-                                DateHeader(title = item.title)
-                            }
-                            is GalleryItem.Media -> {
-                                MediaThumbnail(
-                                    item = item,
-                                    isSelectionMode = uiState.isSelectionMode,
-                                    isSelected = uiState.selectedIds.contains(item.file.id),
-                                    onClick = {
-                                        if (uiState.isSelectionMode) {
-                                            viewModel.toggleItemSelection(item.file.id)
-                                        } else {
-                                            onFileClick(item.originalIndex)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (!uiState.isSelectionMode) {
-                                            viewModel.activateSelectionMode(item.file.id)
-                                        }
-                                    }
-                                )
-                            }
+                    }
+                    
+                    // Pull-to-refresh indicator
+                    if (uiState.isRefreshing) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp
+                            )
                         }
                     }
                 }
@@ -323,6 +355,27 @@ private fun MediaThumbnail(
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
+            }
+            
+            // Duration badge
+            if (item.file.duration > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .background(
+                            Color.Black.copy(alpha = 0.7f),
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = com.example.cleanflow.util.DurationFormatter.format(item.file.duration),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

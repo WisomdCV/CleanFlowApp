@@ -23,6 +23,7 @@ data class GalleryUiState(
     val collectionName: String = "",
     val items: List<GalleryItem> = emptyList(),
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val totalFiles: Int = 0,
     // Selection state
     val isSelectionMode: Boolean = false,
@@ -63,6 +64,19 @@ class GalleryViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    // --- Pull to Refresh ---
+    
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            repository.refreshCache()
+            // The collectLatest in loadFiles() will automatically update
+            // We add a small delay to show the refresh indicator
+            kotlinx.coroutines.delay(500)
+            _uiState.update { it.copy(isRefreshing = false) }
         }
     }
 

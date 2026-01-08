@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -341,22 +342,54 @@ fun MediaViewerScreen(
                                     }
                                     
                                     Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // Animated Delete Button
+                                        val deleteButtonScale by animateFloatAsState(
+                                            targetValue = 1f,
+                                            animationSpec = androidx.compose.animation.core.spring(
+                                                dampingRatio = 0.5f,
+                                                stiffness = 300f
+                                            ),
+                                            label = "deleteScale"
+                                        )
+                                        
                                         FloatingActionButton(
                                             onClick = { 
                                                  viewModel.moveToTrash(currentFile)
                                             },
                                             containerColor = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(56.dp)
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .graphicsLayer {
+                                                    scaleX = deleteButtonScale
+                                                    scaleY = deleteButtonScale
+                                                }
                                         ) {
                                             Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
                                         }
+                                        
                                         Spacer(modifier = Modifier.width(16.dp))
+                                        
+                                        // Animated Keep/Check Button
+                                        val keepButtonScale by animateFloatAsState(
+                                            targetValue = 1f,
+                                            animationSpec = androidx.compose.animation.core.spring(
+                                                dampingRatio = 0.5f,
+                                                stiffness = 300f
+                                            ),
+                                            label = "keepScale"
+                                        )
+                                        
                                         FloatingActionButton(
                                             onClick = { 
                                                 viewModel.keepCurrentFile(pagerState.currentPage) 
                                             },
                                             containerColor = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(56.dp)
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .graphicsLayer {
+                                                    scaleX = keepButtonScale
+                                                    scaleY = keepButtonScale
+                                                }
                                         ) {
                                             Icon(imageVector = Icons.Default.Check, contentDescription = "Keep")
                                         }

@@ -59,7 +59,8 @@ class MediaRepositoryImpl(
             size = entity.size,
             dateAdded = entity.dateAdded,
             mimeType = entity.mimeType,
-            type = type
+            type = type,
+            duration = entity.duration
         )
     }
     

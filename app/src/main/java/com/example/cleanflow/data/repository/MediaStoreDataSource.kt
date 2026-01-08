@@ -58,7 +58,8 @@ class MediaStoreDataSource(private val context: Context) {
             MediaStore.Files.FileColumns.SIZE,
             MediaStore.Files.FileColumns.MIME_TYPE,
             MediaStore.Files.FileColumns.DATA,
-            MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME
+            MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME,
+            MediaStore.Video.Media.DURATION
         )
 
         val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ? OR ${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
@@ -85,6 +86,7 @@ class MediaStoreDataSource(private val context: Context) {
             val mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
             val pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
             val bucketColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
+            val durationColumn = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
@@ -94,6 +96,7 @@ class MediaStoreDataSource(private val context: Context) {
                 val mimeType = cursor.getString(mimeColumn) ?: ""
                 val path = cursor.getString(pathColumn) ?: ""
                 val bucketName = cursor.getString(bucketColumn) ?: "Internal Storage"
+                val duration = if (durationColumn >= 0) cursor.getLong(durationColumn) else 0L
 
                 val contentUri = ContentUris.withAppendedId(
                     MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
@@ -109,7 +112,8 @@ class MediaStoreDataSource(private val context: Context) {
                         size = size,
                         dateAdded = dateAdded,
                         mimeType = mimeType,
-                        bucketName = bucketName
+                        bucketName = bucketName,
+                        duration = duration
                     )
                 )
             }
