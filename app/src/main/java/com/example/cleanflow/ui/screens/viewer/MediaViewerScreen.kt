@@ -3,10 +3,13 @@ package com.example.cleanflow.ui.screens.viewer
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -156,17 +161,61 @@ fun MediaViewerScreen(
                                 }
                             }
         
+                            // Elastic Zoom State
+                            val scale = remember { Animatable(1f) }
+                            val offset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+                            val scope = rememberCoroutineScope()
+        
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
+
+                                    // Apply Zoom Transformations
+                                    .graphicsLayer {
+                                        scaleX = scale.value
+                                        scaleY = scale.value
+                                        translationX = offset.value.x
+                                        translationY = offset.value.y
+                                    }
+                                    // GESTURE: Elastic Zoom
+                                    .pointerInput(Unit) {
+                                        detectTransformGestures { _, pan, zoom, _ ->
+                                            scope.launch {
+                                                scale.snapTo((scale.value * zoom).coerceAtLeast(1f))
+                                                val newOffset = offset.value + pan
+                                                offset.snapTo(newOffset)
+                                            }
+                                        }
+                                    }
+                                    // GESTURE: Snap Back on Release
+                                    .pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                if (event.changes.all { !it.pressed }) {
+                                                    if (scale.value != 1f || offset.value != Offset.Zero) {
+                                                        scope.launch {
+                                                            scale.animateTo(1f)
+                                                            offset.animateTo(Offset.Zero)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // GESTURE: Tap & Double Tap
                                     .pointerInput(Unit) {
                                         detectTapGestures(
-                                            onDoubleTap = { isContentFit = !isContentFit },
+                                            onDoubleTap = { 
+                                                // If zoomed (held?), reset. Logic: Zoom is elastic (snapback), 
+                                                // so double tap mainly happens at rest (scale=1).
+                                                // Just toggle fit as requested.
+                                                isContentFit = !isContentFit
+                                            },
                                             onTap = {
                                                 if (file.type == MediaType.VIDEO) {
                                                     isPlaying = !isPlaying
                                                     showPlayPauseIcon = true
-                                                    // Ensure overlay visible if playing interacted
                                                     isOverlayVisible = true 
                                                 } else {
                                                     isOverlayVisible = !isOverlayVisible
@@ -369,29 +418,30 @@ fun MediaViewerScreen(
                                         
                                         Spacer(modifier = Modifier.width(16.dp))
                                         
-                                        // Animated Keep/Check Button
-                                        val keepButtonScale by animateFloatAsState(
+                                        // Animated Share Button
+                                        val shareButtonScale by animateFloatAsState(
                                             targetValue = 1f,
                                             animationSpec = androidx.compose.animation.core.spring(
                                                 dampingRatio = 0.5f,
                                                 stiffness = 300f
                                             ),
-                                            label = "keepScale"
+                                            label = "shareScale"
                                         )
                                         
+                                        val context = LocalContext.current
                                         FloatingActionButton(
                                             onClick = { 
-                                                viewModel.keepCurrentFile(pagerState.currentPage) 
+                                                viewModel.shareFile(context, currentFile) 
                                             },
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier
                                                 .size(56.dp)
                                                 .graphicsLayer {
-                                                    scaleX = keepButtonScale
-                                                    scaleY = keepButtonScale
+                                                    scaleX = shareButtonScale
+                                                    scaleY = shareButtonScale
                                                 }
                                         ) {
-                                            Icon(imageVector = Icons.Default.Check, contentDescription = "Keep")
+                                            Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
                                         }
                                     }
                                 }

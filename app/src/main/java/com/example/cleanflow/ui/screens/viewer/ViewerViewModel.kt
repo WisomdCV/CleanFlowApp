@@ -99,4 +99,19 @@ class ViewerViewModel @Inject constructor(
     fun consumeError() {
         _error.value = null
     }
+
+    fun shareFile(context: android.content.Context, file: MediaFile) {
+        try {
+            val uri = android.net.Uri.parse(file.uri)
+            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = file.mimeType
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(android.content.Intent.createChooser(shareIntent, "Compartir con"))
+        } catch (e: Exception) {
+            Log.e("CleanFlow", "Error sharing file: ${e.message}")
+            _snackbarMessage.value = "Error al compartir archivo"
+        }
+    }
 }
