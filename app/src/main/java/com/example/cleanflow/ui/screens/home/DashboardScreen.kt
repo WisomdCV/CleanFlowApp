@@ -45,9 +45,13 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.util.lerp
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
 import com.example.cleanflow.R
 import com.example.cleanflow.domain.model.MediaCollection
+import com.example.cleanflow.domain.model.SmartDashboardStats
 import com.example.cleanflow.util.FileSizeFormatter
+import androidx.compose.ui.unit.sp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -125,24 +129,62 @@ fun DashboardContent(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        // storage header
-        Box(
+        // --- Storage Header with Chart ---
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            contentAlignment = Alignment.Center
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Used Storage",
-                    style = MaterialTheme.typography.titleMedium
-                )
+            StorageChart(
+                stats = uiState.stats,
+                modifier = Modifier.size(120.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column {
+                Text(text = "Almacenamiento", style = MaterialTheme.typography.titleSmall)
                 Text(
                     text = FileSizeFormatter.format(uiState.totalSize),
                     style = MaterialTheme.typography.displayMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Video (${FileSizeFormatter.format(uiState.stats.videoSize)})", style = MaterialTheme.typography.labelSmall)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).background(MaterialTheme.colorScheme.secondary, androidx.compose.foundation.shape.CircleShape))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "Imágenes (${FileSizeFormatter.format(uiState.stats.imageSize)})", style = MaterialTheme.typography.labelSmall)
+                }
             }
+        }
+        
+        // Smart Actions
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+             SmartActionChip(
+                 label = "Grandes", 
+                 count = uiState.stats.largeFilesCount,
+                 onClick = { /* TODO */ }
+             )
+             SmartActionChip(
+                 label = "Viejos", 
+                 count = uiState.stats.oldFilesCount,
+                 onClick = { /* TODO */ }
+             )
+             SmartActionChip(
+                 label = "Duplicados", 
+                 count = uiState.stats.duplicateGroupsCount,
+                 isWarning = true,
+                 onClick = { /* TODO */ }
+             )
         }
 
         if (uiState.isLoading) {
@@ -387,6 +429,47 @@ fun TechCollectionCard(
                         text = "EXPLORAR",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SmartActionChip(
+    label: String,
+    count: Int,
+    isWarning: Boolean = false,
+    onClick: () -> Unit
+) {
+    val containerColor = if (isWarning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (isWarning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        color = containerColor,
+        modifier = Modifier.height(32.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp)
+        ) {
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+            if (count > 0) {
+                Spacer(modifier = Modifier.width(4.dp))
+                // Badge circle
+                Box(modifier = Modifier
+                    .size(16.dp)
+                    .background(contentColor.copy(alpha = 0.2f), androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = count.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        color = contentColor
                     )
                 }
             }

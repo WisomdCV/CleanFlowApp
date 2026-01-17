@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface MediaRepository {
     fun getAllCollections(): Flow<List<MediaCollection>>
+    fun getAllFiles(): Flow<List<MediaFile>>
     fun getFilesByCollection(collectionId: String): Flow<List<MediaFile>>
     suspend fun deleteFile(uri: String): Result<Boolean>
     suspend fun deleteFileWithoutRefresh(uri: String): Result<Boolean>

@@ -13,35 +13,45 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.example.cleanflow.domain.model.SmartDashboardStats
+import com.example.cleanflow.domain.usecase.GetSmartStatsUseCase
+import kotlinx.coroutines.flow.combine
+
 data class HomeUiState(
     val isLoading: Boolean = true,
     val collections: List<MediaCollection> = emptyList(),
-    val totalSize: Long = 0
+    val totalSize: Long = 0,
+    val stats: SmartDashboardStats = SmartDashboardStats()
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: MediaRepository
+    private val repository: MediaRepository,
+    private val getSmartStatsUseCase: GetSmartStatsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        loadCollections()
+        loadData()
     }
 
-    private fun loadCollections() {
+    private fun loadData() {
         viewModelScope.launch {
-            repository.getAllCollections().collectLatest { collections ->
+            combine(
+                repository.getAllCollections(),
+                getSmartStatsUseCase()
+            ) { collections, stats ->
                 val totalSize = collections.sumOf { it.totalSize }
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        collections = collections,
-                        totalSize = totalSize
-                    )
-                }
+                HomeUiState(
+                    isLoading = false,
+                    collections = collections,
+                    totalSize = totalSize,
+                    stats = stats
+                )
+            }.collectLatest { newState ->
+                _uiState.value = newState
             }
         }
     }

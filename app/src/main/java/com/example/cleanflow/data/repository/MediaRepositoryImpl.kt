@@ -38,6 +38,16 @@ class MediaRepositoryImpl(
             }
         }
 
+    override fun getAllFiles(): Flow<List<MediaFile>> =
+        combine(
+            dataSource.mediaFiles,
+            trashRepository.trashedIds
+        ) { files, trashedIds ->
+            files
+                .filter { it.id !in trashedIds }
+                .map { mapToDomain(it) }
+        }
+
     override fun getFilesByCollection(collectionId: String): Flow<List<MediaFile>> = 
         combine(
             dataSource.mediaFiles,
