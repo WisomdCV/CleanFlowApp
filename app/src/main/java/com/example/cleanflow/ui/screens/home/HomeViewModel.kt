@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 
 data class HomeUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val collections: List<MediaCollection> = emptyList(),
     val totalSize: Long = 0,
     val stats: SmartDashboardStats = SmartDashboardStats()
@@ -46,6 +47,7 @@ class HomeViewModel @Inject constructor(
                 val totalSize = collections.sumOf { it.totalSize }
                 HomeUiState(
                     isLoading = false,
+                    isRefreshing = false,
                     collections = collections,
                     totalSize = totalSize,
                     stats = stats
@@ -53,6 +55,16 @@ class HomeViewModel @Inject constructor(
             }.collectLatest { newState ->
                 _uiState.value = newState
             }
+        }
+    }
+    
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            repository.refreshCache()
+            // Data will auto-update via combine flow
+            kotlinx.coroutines.delay(500)
+            _uiState.update { it.copy(isRefreshing = false) }
         }
     }
 }

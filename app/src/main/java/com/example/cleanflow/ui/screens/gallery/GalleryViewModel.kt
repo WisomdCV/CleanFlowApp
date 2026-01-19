@@ -184,6 +184,47 @@ class GalleryViewModel @Inject constructor(
         }
     }
     
+    fun shareSelected(context: android.content.Context) {
+        val selectedIds = _uiState.value.selectedIds
+        if (selectedIds.isEmpty()) return
+        
+        val filesToShare = _uiState.value.items
+            .filterIsInstance<GalleryItem.Media>()
+            .filter { it.file.id in selectedIds }
+            .map { it.file }
+        
+        if (filesToShare.isEmpty()) return
+        
+        val uris = filesToShare.map { android.net.Uri.parse(it.uri) }
+        
+        val shareIntent = if (uris.size == 1) {
+            // Single file share
+            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = filesToShare.first().mimeType
+                putExtra(android.content.Intent.EXTRA_STREAM, uris.first())
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } else {
+            // Multiple files share
+            android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "*/*"
+                putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+        
+        try {
+            context.startActivity(
+                android.content.Intent.createChooser(shareIntent, "Compartir ${uris.size} archivos")
+            )
+            _snackbarMessage.value = "Compartiendo ${uris.size} archivos"
+            clearSelection()
+        } catch (e: Exception) {
+            Log.e("CleanFlow", "Share failed: ${e.message}")
+            _snackbarMessage.value = "Error al compartir"
+        }
+    }
+    
     fun consumeSnackbar() {
         _snackbarMessage.value = null
     }

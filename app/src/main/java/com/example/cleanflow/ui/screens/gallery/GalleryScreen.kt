@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -63,6 +64,7 @@ fun GalleryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     // Handle snackbar messages
     LaunchedEffect(snackbarMessage) {
@@ -81,6 +83,7 @@ fun GalleryScreen(
                     selectedCount = uiState.selectedCount,
                     onCancelClick = { viewModel.clearSelection() },
                     onSelectAllClick = { viewModel.selectAll() },
+                    onShareClick = { viewModel.shareSelected(context) },
                     onDeleteClick = { viewModel.deleteSelected() }
                 )
             } else {
@@ -236,6 +239,7 @@ private fun SelectionTopAppBar(
     selectedCount: Int,
     onCancelClick: () -> Unit,
     onSelectAllClick: () -> Unit,
+    onShareClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     TopAppBar(
@@ -250,6 +254,13 @@ private fun SelectionTopAppBar(
         actions = {
             IconButton(onClick = onSelectAllClick) {
                 Icon(Icons.Default.SelectAll, contentDescription = "Seleccionar todo")
+            }
+            IconButton(onClick = onShareClick) {
+                Icon(
+                    Icons.Default.Share, 
+                    contentDescription = "Compartir",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
             IconButton(onClick = onDeleteClick) {
                 Icon(

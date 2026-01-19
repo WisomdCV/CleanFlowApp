@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewCarousel
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -83,6 +84,23 @@ fun DashboardScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
                 actions = {
+                    // Refresh button with loading state
+                    androidx.compose.material3.IconButton(
+                        onClick = { viewModel.refresh() },
+                        enabled = !uiState.isRefreshing
+                    ) {
+                        if (uiState.isRefreshing) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = androidx.compose.ui.Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            androidx.compose.material3.Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Refresh,
+                                contentDescription = "Refrescar"
+                            )
+                        }
+                    }
                     androidx.compose.material3.IconButton(onClick = { isTechMode = !isTechMode }) {
                          androidx.compose.material3.Icon(
                              imageVector = if (isTechMode) androidx.compose.material.icons.Icons.Default.GridView 
