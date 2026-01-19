@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.cleanflow.data.repository.TrashRepository
 import com.example.cleanflow.domain.model.GalleryItem
 import com.example.cleanflow.domain.model.MediaFile
+import com.example.cleanflow.domain.model.SmartFilterType
 import com.example.cleanflow.domain.repository.MediaRepository
+import com.example.cleanflow.domain.usecase.GetFilteredFilesUseCase
 import com.example.cleanflow.domain.util.Result
 import com.example.cleanflow.util.DateHeaderUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,23 +27,38 @@ data class GalleryUiState(
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val totalFiles: Int = 0,
+    val filterType: SmartFilterType = SmartFilterType.ALL,
     // Selection state
     val isSelectionMode: Boolean = false,
     val selectedIds: Set<Long> = emptySet()
 ) {
     val selectedCount: Int get() = selectedIds.size
+    
+    val displayTitle: String get() = when (filterType) {
+        SmartFilterType.ALL -> collectionName
+        SmartFilterType.LARGE_FILES -> "Archivos Grandes"
+        SmartFilterType.OLD_FILES -> "Archivos Viejos"
+        SmartFilterType.DUPLICATES -> "Posibles Duplicados"
+    }
 }
 
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val repository: MediaRepository,
     private val trashRepository: TrashRepository,
+    private val getFilteredFilesUseCase: GetFilteredFilesUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val collectionId: String = savedStateHandle.get<String>("collectionId") ?: ""
+    private val filterTypeArg: String = savedStateHandle.get<String>("filterType") ?: "ALL"
+    private val filterType: SmartFilterType = try {
+        SmartFilterType.valueOf(filterTypeArg)
+    } catch (e: Exception) {
+        SmartFilterType.ALL
+    }
 
-    private val _uiState = MutableStateFlow(GalleryUiState())
+    private val _uiState = MutableStateFlow(GalleryUiState(filterType = filterType))
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
     
     private val _snackbarMessage = MutableStateFlow<String?>(null)
@@ -53,11 +70,23 @@ class GalleryViewModel @Inject constructor(
 
     private fun loadFiles() {
         viewModelScope.launch {
-            repository.getFilesByCollection(collectionId).collectLatest { files ->
+            // Decide which flow to use based on filter type
+            val filesFlow = if (filterType == SmartFilterType.ALL && collectionId.isNotEmpty()) {
+                // Normal collection view
+                repository.getFilesByCollection(collectionId)
+            } else if (filterType != SmartFilterType.ALL) {
+                // Smart filter view (across all files)
+                getFilteredFilesUseCase(filterType)
+            } else {
+                // Fallback: all files
+                repository.getAllFiles()
+            }
+            
+            filesFlow.collectLatest { files ->
                 val galleryItems = transformToGalleryItems(files)
                 _uiState.update {
                     it.copy(
-                        collectionName = collectionId,
+                        collectionName = collectionId.ifEmpty { filterType.name },
                         items = galleryItems,
                         isLoading = false,
                         totalFiles = files.size

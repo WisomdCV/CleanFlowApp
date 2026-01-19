@@ -61,6 +61,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 fun DashboardScreen(
     viewModel: HomeViewModel,
     onCollectionClick: (String) -> Unit,
+    onSmartFilterClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onTrashClick: () -> Unit
 ) {
@@ -115,6 +116,7 @@ fun DashboardScreen(
             DashboardContent(
                 uiState = uiState,
                 onCollectionClick = onCollectionClick,
+                onSmartFilterClick = onSmartFilterClick,
                 isTechMode = isTechMode
             )
     }
@@ -125,6 +127,7 @@ fun DashboardScreen(
 fun DashboardContent(
     uiState: HomeUiState,
     onCollectionClick: (String) -> Unit,
+    onSmartFilterClick: (String) -> Unit,
     isTechMode: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -172,18 +175,18 @@ fun DashboardContent(
              SmartActionChip(
                  label = "Grandes", 
                  count = uiState.stats.largeFilesCount,
-                 onClick = { /* TODO */ }
+                 onClick = { onSmartFilterClick("LARGE_FILES") }
              )
              SmartActionChip(
                  label = "Viejos", 
                  count = uiState.stats.oldFilesCount,
-                 onClick = { /* TODO */ }
+                 onClick = { onSmartFilterClick("OLD_FILES") }
              )
              SmartActionChip(
                  label = "Duplicados", 
                  count = uiState.stats.duplicateGroupsCount,
                  isWarning = true,
-                 onClick = { /* TODO */ }
+                 onClick = { onSmartFilterClick("DUPLICATES") }
              )
         }
 

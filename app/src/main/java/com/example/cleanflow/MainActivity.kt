@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,6 +51,10 @@ class MainActivity : ComponentActivity() {
                     false 
                 }
                 
+                // Optimized animation specs
+                val fastTween = tween<Float>(220, easing = FastOutSlowInEasing)
+                val mediumTween = tween<Float>(180, easing = FastOutSlowInEasing)
+                
                 NavHost(
                     navController = navController, 
                     startDestination = if (hasPermission) "dashboard" else "onboarding"
@@ -58,8 +63,8 @@ class MainActivity : ComponentActivity() {
                     // Onboarding - Fade transition
                     composable(
                         route = "onboarding",
-                        enterTransition = { fadeIn(tween(500)) },
-                        exitTransition = { fadeOut(tween(300)) }
+                        enterTransition = { fadeIn(tween(400)) },
+                        exitTransition = { fadeOut(tween(200)) }
                     ) {
                         val viewModel: com.example.cleanflow.ui.screens.onboarding.OnboardingViewModel = hiltViewModel()
                         com.example.cleanflow.ui.screens.onboarding.OnboardingScreen(
@@ -72,13 +77,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Dashboard - Fade in, slide out
+                    // Dashboard - Clean slide transitions
                     composable(
                         route = "dashboard",
-                        enterTransition = { fadeIn(tween(300)) },
-                        exitTransition = { slideOutHorizontally(tween(300)) { -it / 4 } + fadeOut(tween(200)) },
-                        popEnterTransition = { slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(200)) },
-                        popExitTransition = { fadeOut(tween(300)) }
+                        enterTransition = { fadeIn(tween(200, easing = FastOutSlowInEasing)) },
+                        exitTransition = { slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { -it / 3 } },
+                        popEnterTransition = { slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { -it / 3 } },
+                        popExitTransition = { fadeOut(tween(180)) }
                     ) {
                         val viewModel: HomeViewModel = hiltViewModel()
                         
@@ -86,6 +91,9 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             onCollectionClick = { collectionId ->
                                 navController.navigate("gallery/$collectionId")
+                            },
+                            onSmartFilterClick = { filterType ->
+                                navController.navigate("gallery/_smart?filterType=$filterType")
                             },
                             onSettingsClick = {
                                 navController.navigate("settings")
@@ -96,14 +104,20 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // Gallery - Slide horizontal
+                    // Gallery - Fast horizontal slide (supports both collection and filter modes)
                     composable(
-                        route = "gallery/{collectionId}",
-                        arguments = listOf(navArgument("collectionId") { type = NavType.StringType }),
-                        enterTransition = { slideInHorizontally(tween(300)) { it } },
-                        exitTransition = { slideOutHorizontally(tween(300)) { -it / 4 } + fadeOut(tween(200)) },
-                        popEnterTransition = { slideInHorizontally(tween(300)) { -it / 4 } + fadeIn(tween(200)) },
-                        popExitTransition = { slideOutHorizontally(tween(300)) { it } }
+                        route = "gallery/{collectionId}?filterType={filterType}",
+                        arguments = listOf(
+                            navArgument("collectionId") { type = NavType.StringType },
+                            navArgument("filterType") { 
+                                type = NavType.StringType
+                                defaultValue = "ALL"
+                            }
+                        ),
+                        enterTransition = { slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { it } },
+                        exitTransition = { slideOutHorizontally(tween(200, easing = FastOutSlowInEasing)) { -it / 4 } },
+                        popEnterTransition = { slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { -it / 4 } },
+                        popExitTransition = { slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { it } }
                     ) {
                         val viewModel: GalleryViewModel = hiltViewModel()
                         
@@ -117,7 +131,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // Viewer - Fade + Scale (premium feel)
+                    // Viewer - Quick fade + subtle scale (premium feel)
                     composable(
                         route = "viewer/{collectionId}?initialIndex={initialIndex}",
                         arguments = listOf(
@@ -127,10 +141,10 @@ class MainActivity : ComponentActivity() {
                                 defaultValue = 0
                             }
                         ),
-                        enterTransition = { fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.92f) },
-                        exitTransition = { fadeOut(tween(200)) },
-                        popEnterTransition = { fadeIn(tween(200)) },
-                        popExitTransition = { fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 0.92f) }
+                        enterTransition = { fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.95f) },
+                        exitTransition = { fadeOut(tween(150)) },
+                        popEnterTransition = { fadeIn(tween(150)) },
+                        popExitTransition = { fadeOut(tween(180)) + scaleOut(tween(180), targetScale = 0.95f) }
                     ) {
                         val viewModel: ViewerViewModel = hiltViewModel()
                         
@@ -140,26 +154,26 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Settings - Slide from bottom
+                    // Settings - Fast vertical slide
                     composable(
                         route = "settings",
-                        enterTransition = { slideInVertically(tween(350)) { it } },
-                        exitTransition = { fadeOut(tween(200)) },
-                        popEnterTransition = { fadeIn(tween(200)) },
-                        popExitTransition = { slideOutVertically(tween(300)) { it } }
+                        enterTransition = { slideInVertically(tween(250, easing = FastOutSlowInEasing)) { it } },
+                        exitTransition = { fadeOut(tween(150)) },
+                        popEnterTransition = { fadeIn(tween(150)) },
+                        popExitTransition = { slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it } }
                     ) {
                         SettingsScreen(
                             onBackClick = { navController.popBackStack() }
                         )
                     }
                     
-                    // Trash - Slide from bottom
+                    // Trash - Fast vertical slide
                     composable(
                         route = "trash",
-                        enterTransition = { slideInVertically(tween(350)) { it } },
-                        exitTransition = { fadeOut(tween(200)) },
-                        popEnterTransition = { fadeIn(tween(200)) },
-                        popExitTransition = { slideOutVertically(tween(300)) { it } }
+                        enterTransition = { slideInVertically(tween(250, easing = FastOutSlowInEasing)) { it } },
+                        exitTransition = { fadeOut(tween(150)) },
+                        popEnterTransition = { fadeIn(tween(150)) },
+                        popExitTransition = { slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it } }
                     ) {
                         val viewModel: TrashViewModel = hiltViewModel()
                         

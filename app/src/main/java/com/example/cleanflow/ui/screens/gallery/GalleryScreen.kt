@@ -88,7 +88,7 @@ fun GalleryScreen(
                 TopAppBar(
                     title = { 
                         Column {
-                            Text(uiState.collectionName)
+                            Text(uiState.displayTitle)
                             if (!uiState.isLoading) {
                                 Text(
                                     text = "${uiState.totalFiles} archivos",
