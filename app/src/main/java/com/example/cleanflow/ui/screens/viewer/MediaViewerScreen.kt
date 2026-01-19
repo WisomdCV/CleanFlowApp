@@ -11,6 +11,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -104,6 +108,14 @@ fun MediaViewerScreen(
             pageCount = { files.size }
         )
         val userPrefs = preferences!!
+        
+        // Logic to prevent Pager scroll while Zooming
+        var isPagerScrollEnabled by remember { mutableStateOf(true) }
+        
+        // Safety: Always reset scroll enabled when changing pages
+        LaunchedEffect(pagerState.currentPage) {
+             isPagerScrollEnabled = true
+        }
 
         // Handle auto-navigation
         LaunchedEffect(navigationEvent) {
@@ -137,6 +149,7 @@ fun MediaViewerScreen(
                 ) {
                     VerticalPager(
                         state = pagerState,
+                        userScrollEnabled = isPagerScrollEnabled,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         // Guard against index OOB if list shrinks rapidly
@@ -164,6 +177,18 @@ fun MediaViewerScreen(
                             // Elastic Zoom State
                             val scale = remember { Animatable(1f) }
                             val offset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+                            
+                            // Sync with parent scroll state
+                            LaunchedEffect(scale.value, offset.value, isCurrentPage) {
+                                if (isCurrentPage) {
+                                    // Use tolerance for float precision issues
+                                    val isScaleReset = scale.value <= 1.05f
+                                    val isOffsetReset = offset.value.getDistance() < 5f
+                                    
+                                    isPagerScrollEnabled = isScaleReset && isOffsetReset
+                                }
+                            }
+                            
                             val scope = rememberCoroutineScope()
         
                             Box(
@@ -177,28 +202,58 @@ fun MediaViewerScreen(
                                         translationX = offset.value.x
                                         translationY = offset.value.y
                                     }
-                                    // GESTURE: Elastic Zoom
+                                    // GESTURE: Custom Zoom/Pan that doesn't block Pager scroll
                                     .pointerInput(Unit) {
-                                        detectTransformGestures { _, pan, zoom, _ ->
-                                            scope.launch {
-                                                scale.snapTo((scale.value * zoom).coerceAtLeast(1f))
-                                                val newOffset = offset.value + pan
-                                                offset.snapTo(newOffset)
-                                            }
-                                        }
-                                    }
-                                    // GESTURE: Snap Back on Release
-                                    .pointerInput(Unit) {
-                                        awaitPointerEventScope {
-                                            while (true) {
+                                        awaitEachGesture {
+                                            // Wait for first touch
+                                            awaitFirstDown(requireUnconsumed = false)
+                                            
+                                            var previousPointerCount = 1
+                                            var isZoomGestureActive = scale.value > 1.05f // Already zoomed?
+                                            
+                                            do {
                                                 val event = awaitPointerEvent()
-                                                if (event.changes.all { !it.pressed }) {
-                                                    if (scale.value != 1f || offset.value != Offset.Zero) {
-                                                        scope.launch {
-                                                            scale.animateTo(1f)
-                                                            offset.animateTo(Offset.Zero)
+                                                val pointerCount = event.changes.count { it.pressed }
+                                                
+                                                // Activate zoom mode if 2+ fingers detected
+                                                if (pointerCount >= 2) {
+                                                    isZoomGestureActive = true
+                                                }
+                                                
+                                                if (isZoomGestureActive && pointerCount >= 1) {
+                                                    // Calculate zoom and pan
+                                                    val zoomChange = if (pointerCount >= 2) {
+                                                        val currentDistance = event.calculateCentroidSize(useCurrent = true)
+                                                        val previousDistance = event.calculateCentroidSize(useCurrent = false)
+                                                        if (previousDistance > 0f) currentDistance / previousDistance else 1f
+                                                    } else 1f
+                                                    
+                                                    val panChange = event.calculatePan()
+                                                    
+                                                    // Apply transformations
+                                                    scope.launch {
+                                                        val newScale = (scale.value * zoomChange).coerceIn(1f, 5f)
+                                                        scale.snapTo(newScale)
+                                                        
+                                                        if (scale.value > 1.05f) {
+                                                            offset.snapTo(offset.value + panChange)
                                                         }
                                                     }
+                                                    
+                                                    // Consume to prevent Pager interference
+                                                    event.changes.forEach { it.consume() }
+                                                }
+                                                // If not zooming and 1 finger -> DON'T consume, let Pager scroll
+                                                
+                                                previousPointerCount = pointerCount
+                                                
+                                            } while (event.changes.any { it.pressed })
+                                            
+                                            // Snap back on release
+                                            if (scale.value > 1f || offset.value != Offset.Zero) {
+                                                scope.launch {
+                                                    scale.animateTo(1f)
+                                                    offset.animateTo(Offset.Zero)
                                                 }
                                             }
                                         }
